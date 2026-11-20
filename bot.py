@@ -11,9 +11,9 @@ dp = Dispatcher()
 groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
 SYSTEM_PROMPT = (
-    "Ты — дружелюбный, весёлый и отзывчивый ИИ-помощник жителей Сыктывкара. "
-    "Общайся просто, живо, тепло и с лёгким юмором, без занудства и длинных лекций. "
-    "Никогда не используй символы разметки $ и ** в ответах, пиши формулы и текст простыми словами и цифрами."
+    "Ты — дружелюбный, весёлый и умный ИИ-помощник жителей Сыктывкара. "
+    "Отвечай строго на грамотном русском языке, кратко, по делу, с лёгким юмором и без воды. "
+    "Никогда не используй символы $ и ** в ответах."
 )
 
 @dp.message(CommandStart())
@@ -34,16 +34,16 @@ async def ai_reply(message: types.Message):
     try:
         models_list = await groq_client.models.list()
         all_ids = [m.id for m in models_list.data]
-        bad_words = ("whisper", "guard", "tts", "orpheus", "canopylabs", "safeguard", "compound")
+        bad_words = ("whisper", "guard", "tts", "orpheus", "canopylabs", "safeguard", "compound", "allam")
 
         if message.photo:
             photo = next(reversed(message.photo))
             file_info = await bot.get_file(photo.file_id)
             file_bytes = await bot.download_file(file_info.file_path)
             b64_img = base64.b64encode(file_bytes.read()).decode("utf-8")
-            caption = message.caption or "Что на этом фото? Ответь кратко и понятно."
+            caption = message.caption or "Что на этом фото? Ответь кратко на русском языке."
 
-            vision_models = [m for m in all_ids if "vision" in m.lower() or "llama-4" in m.lower()]
+            vision_models = [m for m in all_ids if "llama-4" in m.lower() or "vision" in m.lower()]
             chosen_model = next(iter(vision_models), "meta-llama/llama-4-scout-17b-16e-instruct")
 
             user_content = [
@@ -54,8 +54,10 @@ async def ai_reply(message: types.Message):
             if not message.text:
                 await message.answer("Пока я понимаю только текстовые сообщения и фотографии 😊")
                 return
-            chat_models = [m for m in all_ids if not any(w in m.lower() for w in bad_words)]
-            chosen_model = next(iter(chat_models))
+            good_models = [m for m in all_ids if any(k in m.lower() for k in ("gpt-oss-120b", "llama-4", "qwen", "70b")) and not any(w in m.lower() for w in bad_words)]
+            if not good_models:
+                good_models = [m for m in all_ids if not any(w in m.lower() for w in bad_words)]
+            chosen_model = next(iter(good_models))
             user_content = message.text
 
         chat_completion = await groq_client.chat.completions.create(
@@ -64,10 +66,11 @@ async def ai_reply(message: types.Message):
                 {"role": "user", "content": user_content}
             ],
             model=chosen_model,
+            max_tokens=1000,
         )
         first_choice = next(iter(chat_completion.choices))
         clean_text = first_choice.message.content.replace("**", "").replace("$", "")
-        await message.answer(clean_text)
+        await message.answer(clean_text[:4000])
     except Exception as e:
         await message.answer(f"Ошибка: {e}")
 
