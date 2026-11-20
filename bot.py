@@ -32,7 +32,8 @@ async def start_cmd(message: types.Message):
 async def ai_reply(message: types.Message):
     try:
         models_list = await groq_client.models.list()
-        chat_models = [m.id for m in models_list.data if "whisper" not in m.id and "guard" not in m.id and "tts" not in m.id]
+        bad_words = ("whisper", "guard", "tts", "orpheus", "canopylabs", "safeguard", "compound")
+        chat_models = [m.id for m in models_list.data if not any(w in m.id.lower() for w in bad_words)]
         chosen_model = next(iter(chat_models))
         chat_completion = await groq_client.chat.completions.create(
             messages=[
