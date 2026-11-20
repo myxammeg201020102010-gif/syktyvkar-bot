@@ -31,12 +31,15 @@ async def start_cmd(message: types.Message):
 @dp.message()
 async def ai_reply(message: types.Message):
     try:
+        models_list = await groq_client.models.list()
+        chat_models = [m.id for m in models_list.data if "whisper" not in m.id and "guard" not in m.id and "tts" not in m.id]
+        chosen_model = next(iter(chat_models))
         chat_completion = await groq_client.chat.completions.create(
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": message.text}
             ],
-            model="llama-3.1-8b-instant",
+            model=chosen_model,
         )
         first_choice = next(iter(chat_completion.choices))
         await message.answer(first_choice.message.content)
