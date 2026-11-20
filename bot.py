@@ -36,7 +36,7 @@ async def ai_reply(message: types.Message):
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": message.text}
             ],
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
         )
         first_choice = next(iter(chat_completion.choices))
         await message.answer(first_choice.message.content)
