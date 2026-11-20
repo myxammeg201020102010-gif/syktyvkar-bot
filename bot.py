@@ -1,5 +1,6 @@
 import os
 import asyncio
+from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
 from groq import AsyncGroq
@@ -37,11 +38,22 @@ async def ai_reply(message: types.Message):
             ],
             model="llama-3.3-70b-versatile",
         )
-        await message.answer(chat_completion.choices[0].message.content)
-    except Exception:
-        await message.answer("Ой, я немного задумался 😅 Попробуй написать свой вопрос ещё раз чуть позже!")
+        first_choice = next(iter(chat_completion.choices))
+        await message.answer(first_choice.message.content)
+    except Exception as e:
+        await message.answer(f"Ошибка: {e}")
+
+async def handle(request):
+    return web.Response(text="Bot is running!")
 
 async def main():
+    app = web.Application()
+    app.router.add_get("/", handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.getenv("PORT", 10000))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
