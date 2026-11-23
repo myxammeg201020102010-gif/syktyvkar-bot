@@ -78,18 +78,19 @@ def get_bell_status():
     if cur_mins >= last_end:
         return f"🕒 Сейчас {time_str}. Все занятия на сегодня уже закончились! 🎉"
 
-    for i, (start_s, end_s, name) in enumerate(sched):
+    prev_end = None
+    prev_end_s = ""
+    for start_s, end_s, name in sched:
         s_m = to_mins(start_s)
         e_m = to_mins(end_s)
+        if prev_end is not None and prev_end <= cur_mins < s_m:
+            left = s_m - cur_mins
+            return f"☕ Сейчас {time_str} — перемена ({prev_end_s}–{start_s}).\nДо звонка на «{name}» осталось: {left} мин."
         if s_m <= cur_mins < e_m:
             left = e_m - cur_mins
             return f"🔔 Сейчас {time_str} ({day_name}).\nИдёт: {name} ({start_s}–{end_s}).\nДо звонка осталось: {left} мин."
-        if i + 1 < len(sched):
-            next_start_s, _, next_name = sched[i + 1]
-            next_s = to_mins(next_start_s)
-            if e_m <= cur_mins < next_s:
-                left = next_s - cur_mins
-                return f"☕ Сейчас {time_str} — перемена ({end_s}–{next_start_s}).\nДо звонка на «{next_name}» осталось: {left} мин."
+        prev_end = e_m
+        prev_end_s = end_s
 
     return f"🕒 Сейчас {time_str}."
 
@@ -213,5 +214,3 @@ async def ai_reply(message: types.Message):
         await message.answer(f"Ошибка: {e}")
 
 async def handle(request):
-    return web.Response(text="Bot is running!")
-
