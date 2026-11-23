@@ -66,14 +66,14 @@ def get_bell_status():
     sched = SCHEDULE_MON if weekday == 0 else SCHEDULE_TUE_FRI
     day_name = "понедельника" if weekday == 0 else "вторника–пятницы"
 
-    first_item = next(iter(sched))
-    last_item = next(reversed(sched))
-    first_start = to_mins(first_item[0])
-    last_end = to_mins(last_item[1])
+    first_start_s, _, first_name = next(iter(sched))
+    _, last_end_s, _ = next(reversed(sched))
+    first_start = to_mins(first_start_s)
+    last_end = to_mins(last_end_s)
 
     if cur_mins < first_start:
         diff = first_start - cur_mins
-        return f"🕒 Сейчас {time_str} (расписание {day_name}).\nДо начала первого занятия ({first_item[0]}) осталось {diff} мин."
+        return f"🕒 Сейчас {time_str} (расписание {day_name}).\nДо начала первого занятия ({first_start_s} — {first_name}) осталось {diff} мин."
 
     if cur_mins >= last_end:
         return f"🕒 Сейчас {time_str}. Все занятия на сегодня уже закончились! 🎉"
@@ -85,11 +85,11 @@ def get_bell_status():
             left = e_m - cur_mins
             return f"🔔 Сейчас {time_str} ({day_name}).\nИдёт: {name} ({start_s}–{end_s}).\nДо звонка осталось: {left} мин."
         if i + 1 < len(sched):
-            next_item = sched[i + 1]
-            next_s = to_mins(next_item[0])
+            next_start_s, _, next_name = sched[i + 1]
+            next_s = to_mins(next_start_s)
             if e_m <= cur_mins < next_s:
                 left = next_s - cur_mins
-                return f"☕ Сейчас {time_str} — перемена ({end_s}–{next_item[0]}).\nДо звонка на «{next_item[2]}» осталось: {left} мин."
+                return f"☕ Сейчас {time_str} — перемена ({end_s}–{next_start_s}).\nДо звонка на «{next_name}» осталось: {left} мин."
 
     return f"🕒 Сейчас {time_str}."
 
@@ -213,3 +213,5 @@ async def ai_reply(message: types.Message):
         await message.answer(f"Ошибка: {e}")
 
 async def handle(request):
+    return web.Response(text="Bot is running!")
+
