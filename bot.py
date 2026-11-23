@@ -13,7 +13,6 @@ groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
 users_set = set()
 total_messages = 0
-
 MSK = timezone(timedelta(hours=3))
 
 SCHEDULE_MON = [
@@ -51,8 +50,8 @@ SCHEDULE_TUE_FRI = [
 ]
 
 def to_mins(t_str):
-    h, m = map(int, t_str.split(":"))
-    return h * 60 + m
+    parts = t_str.split(":")
+    return int(parts[0]) * 60 + int(parts[1])
 
 def get_bell_status():
     now = datetime.now(MSK)
@@ -66,8 +65,8 @@ def get_bell_status():
     sched = SCHEDULE_MON if weekday == 0 else SCHEDULE_TUE_FRI
     day_name = "понедельника" if weekday == 0 else "вторника–пятницы"
 
-    first_start_s, _, first_name = next(iter(sched))
-    _, last_end_s, _ = next(reversed(sched))
+    first_start_s, _, first_name = sched[0]
+    _, last_end_s, _ = sched[-1]
     first_start = to_mins(first_start_s)
     last_end = to_mins(last_end_s)
 
@@ -173,7 +172,7 @@ async def ai_reply(message: types.Message):
         bad_words = ("whisper", "guard", "tts", "orpheus", "canopylabs", "safeguard", "compound", "allam")
 
         if message.photo:
-            photo = next(reversed(message.photo))
+            photo = message.photo[-1]
             file_info = await bot.get_file(photo.file_id)
             file_bytes = await bot.download_file(file_info.file_path)
             b64_img = base64.b64encode(file_bytes.read()).decode("utf-8")
@@ -183,7 +182,7 @@ async def ai_reply(message: types.Message):
             if not vision_models:
                 await message.answer("Сейчас Groq временно отключил распознавание картинок на бесплатном тарифе, но текстом я отвечу на любой вопрос! 😊")
                 return
-            chosen_model = next(iter(vision_models))
+            chosen_model = vision_models[0]
 
             user_content = [
                 {"type": "text", "text": caption},
@@ -196,7 +195,7 @@ async def ai_reply(message: types.Message):
             good_models = [m for m in all_ids if any(k in m.lower() for k in ("gpt-oss-120b", "qwen", "70b", "llama")) and not any(w in m.lower() for w in bad_words)]
             if not good_models:
                 good_models = [m for m in all_ids if not any(w in m.lower() for w in bad_words)]
-            chosen_model = next(iter(good_models))
+            chosen_model = good_models[0]
             user_content = message.text
 
         chat_completion = await groq_client.chat.completions.create(
@@ -207,10 +206,16 @@ async def ai_reply(message: types.Message):
             model=chosen_model,
             max_tokens=1000,
         )
-        first_choice = next(iter(chat_completion.choices))
+        first_choice = chat_completion.choices[0]
         clean_text = first_choice.message.content.replace("**", "").replace("$", "")
         await message.answer(clean_text[:4000])
     except Exception as e:
         await message.answer(f"Ошибка: {e}")
 
 async def handle(request):
+    return web.Response(text="Bot is running!")
+
+async def keep_alive():
+    url = os.getenv("RENDER_EXTERNAL_URL")
+    if not url:
+        return
